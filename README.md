@@ -18,7 +18,7 @@
 ![IaC](https://img.shields.io/badge/IaC-Infrastructure_as_Code-0078D4?style=for-the-badge)
 ![Status](https://img.shields.io/badge/Status-Production_Ready-28a745?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)
-
+![Docker Official Images](https://img.shields.io/badge/Docker-Official_Images-0db7ed?style=for-the-badge&logo=docker&logoColor=white)
 </div>
 
 ---
