@@ -1,7 +1,14 @@
-# 🚀 AWS Infrastructure Automation with Terraform
+#  AWS Infrastructure Automation with Terraform
 
 > **Production-grade Infrastructure as Code (IaC) — Provisioning a secure, scalable, multi-tier AWS architecture using Terraform with remote state management, modular design, and automated networking.**
 
+# CI/CD Pipeline using Jenkins
+
+ This pipeline automates:
+- Docker image build & push to DockerHub
+- Infrastructure provisioning using Terraform
+- Deployment to AWS EKS cluster
+- Kubernetes resource verification
 ---
 
 <div align="center">
@@ -31,7 +38,7 @@ The infrastructure follows AWS **Well-Architected Framework** principles:
 
 ---
 
-## 🏗️ Architecture
+##  Architecture
 
 ```
 Internet
@@ -124,7 +131,7 @@ Internet ──► ALB (443) ──► EC2 (8080) ──► RDS (3306)
 
 ---
 
-## 🚀 How to Deploy
+##  How to Deploy
 
 ### Prerequisites
 
@@ -154,7 +161,7 @@ terraform destroy -var-file="environments/dev/terraform.tfvars"
 
 ---
 
-## 📋 Key Variables
+##  Key Variables
 
 | Variable | Description | Default |
 |---|---|---|
@@ -168,7 +175,7 @@ terraform destroy -var-file="environments/dev/terraform.tfvars"
 
 ---
 
-## 📤 Outputs
+##  Outputs
 
 After `terraform apply`, you'll see:
 
@@ -182,7 +189,7 @@ private_subnet_ids  = ["subnet-xxx", "subnet-yyy"]
 
 ---
 
-## 💡 DevOps Concepts Demonstrated
+##  DevOps Concepts Demonstrated
 
 This project covers skills directly tested in DevOps interviews:
 
@@ -199,7 +206,187 @@ This project covers skills directly tested in DevOps interviews:
 
 ---
 
-## 🧰 Tech Stack
+## 🔄 CI/CD Pipeline (Jenkins)
+
+This project includes a **CI/CD pipeline using Jenkins** to automate Terraform-based infrastructure provisioning, ensuring consistent and production-ready deployments.
+
+---
+
+### ⚙️ Pipeline Workflow
+
+The Jenkins pipeline performs the following stages:
+
+1. **Checkout Code** – Pulls latest Terraform code from GitHub
+2. **Terraform Init** – Initializes backend and providers
+3. **Terraform Validate** – Ensures configuration correctness
+4. **Terraform Plan** – Previews infrastructure changes
+5. **Terraform Apply** – Deploys infrastructure (with approval gate)
+
+This pipeline automates the complete DevOps workflow:
+
+1. Builds and pushes Docker image to DockerHub (shreyash28m)
+2. Provisions AWS infrastructure using Terraform
+3. Deploys application to AWS EKS
+4. Uses secure credential management
+5. Includes manual approval before production deployment
+
+
+---
+
+###  Sample Jenkinsfile
+
+```groovy
+### 📌 Pipeline Code
+
+```groovy
+pipeline {
+    agent any
+
+    environment {
+        AWS_DEFAULT_REGION = "ap-southeast-1"
+        CLUSTER_NAME = "EKS_CLOUD"
+        DOCKER_IMAGE = "shreyash28m/terraform-project"
+    }
+
+    stages {
+
+        stage('Clone Repository') {
+            steps {
+                git branch: 'main', url: 'https://github.com/Shreyash28M/Terraform-Project.git'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh '''
+                docker build -t $DOCKER_IMAGE:latest .
+                docker tag $DOCKER_IMAGE:latest $DOCKER_IMAGE:$BUILD_NUMBER
+                '''
+            }
+        }
+
+        stage('Push to DockerHub') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'docker-cred',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh '''
+                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                    docker push $DOCKER_IMAGE:latest
+                    docker push $DOCKER_IMAGE:$BUILD_NUMBER
+                    '''
+                }
+            }
+        }
+
+        stage('Terraform Init & Validate') {
+            steps {
+                withCredentials([aws(credentialsId: 'aws-cred')]) {
+                    dir('EKS-TF') {
+                        sh 'terraform init'
+                        sh 'terraform validate'
+                    }
+                }
+            }
+        }
+
+        stage('Terraform Plan') {
+            steps {
+                withCredentials([aws(credentialsId: 'aws-cred')]) {
+                    dir('EKS-TF') {
+                        sh 'terraform plan -out=tfplan'
+                    }
+                }
+            }
+        }
+
+        stage('Manual Approval') {
+            steps {
+                input message: "Approve Terraform Apply?"
+            }
+        }
+
+        stage('Terraform Apply') {
+            steps {
+                withCredentials([aws(credentialsId: 'aws-cred')]) {
+                    dir('EKS-TF') {
+                        sh 'terraform apply -auto-approve tfplan'
+                    }
+                }
+            }
+        }
+
+        stage('Update Kubeconfig') {
+            steps {
+                withCredentials([aws(credentialsId: 'aws-cred')]) {
+                    sh '''
+                    aws eks --region $AWS_DEFAULT_REGION \
+                    update-kubeconfig --name $CLUSTER_NAME
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy to EKS') {
+            steps {
+                sh '''
+                sed -i "s|IMAGE_PLACEHOLDER|$DOCKER_IMAGE:$BUILD_NUMBER|g" deployment.yaml
+                kubectl apply -f deployment.yaml
+                kubectl apply -f service.yaml
+                '''
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                sh 'kubectl get pods'
+                sh 'kubectl get svc'
+            }
+        }
+    }
+}
+```
+
+```
+## 🔐 Credentials Management
+
+Sensitive credentials are securely managed using **Jenkins Credentials Store**, following DevOps security best practices.
+
+* **AWS Credentials (`aws-cred`)**
+
+  * Used for Terraform provisioning and EKS cluster access
+  * Configured using IAM Access Key and Secret Key
+
+* **DockerHub Credentials (`docker-cred`)**
+
+  * Used for authenticating and pushing Docker images
+  * Stored as Username and Password
+
+> ⚠️ **Security Note:** No credentials are hardcoded in the pipeline. All secrets are securely injected at runtime using Jenkins credential binding.
+
+---
+
+###  Why CI/CD Matters in This Project
+
+* Eliminates manual infrastructure deployment
+* Ensures consistent environments (Dev / Prod)
+* Reduces human errors
+* Demonstrates real-world DevOps practices
+
+---
+
+### 🔐 Prerequisites
+
+* Jenkins installed and configured
+* Terraform installed on Jenkins server
+* AWS credentials configured securely (IAM role or access keys)
+* Remote backend (S3 + DynamoDB) already set up
+
+
+---
+##  Tech Stack
 
 ```
 Infrastructure:   Terraform · AWS
