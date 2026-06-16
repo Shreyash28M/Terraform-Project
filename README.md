@@ -349,7 +349,7 @@ pipeline {
 }
 ```
 
-```
+
 ## 🔐 Credentials Management
 
 Sensitive credentials are securely managed using **Jenkins Credentials Store**, following DevOps security best practices.
